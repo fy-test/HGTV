@@ -177,6 +177,20 @@ class ContentRepositoryTest {
         assertEquals("720P",repo.stream("123",720).quality)
     }
 
+    @Test fun preferH264SelectsAvcWhenBothHevcAndAvcExist() {
+        val repo=streamRepository(Triple(1080,"bytevc1","https://example.com/hevc"),Triple(1080,"h264","https://example.com/avc"))
+        val result=repo.stream("123",1080,preferH264=true)
+        assertEquals("https://example.com/avc",result.url)
+        assertEquals("1080P",result.quality)
+    }
+
+    @Test fun preferH264FallsBackToAvcWithinQualityLimit() {
+        val repo=streamRepository(Triple(1080,"bytevc1","https://example.com/hevc"),Triple(720,"h264","https://example.com/avc720"))
+        val result=repo.stream("123",1080,preferH264=true)
+        assertEquals("https://example.com/avc720",result.url)
+        assertEquals("720P",result.quality)
+    }
+
     private fun repository(clock: () -> Long = System::currentTimeMillis, respond: (Request) -> String) = ContentRepository(
         OkHttpClient.Builder().addInterceptor { chain ->
             Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1)

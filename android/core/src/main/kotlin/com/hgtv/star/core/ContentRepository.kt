@@ -1159,7 +1159,7 @@ class ContentRepository(val http: OkHttpClient = OkHttpClient.Builder().connectT
         is String -> runCatching { JSONObject(value) }.getOrNull()
         else -> null
     }
-    fun stream(id: String, maxQuality: Int = 1080): StreamInfo {
+    fun stream(id: String, maxQuality: Int = 1080, preferH264: Boolean = false): StreamInfo {
         require(id.matches(Regex("[0-9]{1,30}")))
         val model=videoModel(id)
         val raw=model.opt("fallback_api")
@@ -1172,7 +1172,17 @@ class ContentRepository(val http: OkHttpClient = OkHttpClient.Builder().connectT
         val rows=videoList.keys().asSequence().mapNotNull { k -> videoList.optJSONObject(k)?.let { k to it } }.filter {
             it.second.str("main_url").isNotEmpty() && it.second.str("codec_type").lowercase() !in setOf("bytevc2","bvc2")
         }.map { (k,o) -> Triple(qualityNumber(o.str("quality_desc").ifEmpty { o.str("height").ifEmpty { o.str("vheight").ifEmpty { o.str("quality").ifEmpty { k } } } }),k,o) }.sortedByDescending { it.first }.toList()
-        val selected=rows.firstOrNull { it.first<=maxQuality } ?: rows.lastOrNull() ?: throw IOException("没有电视可播放的清晰度，请稍后再试或选择其他剧集")
+        fun isH264(codec: String): Boolean {
+            val c = codec.lowercase()
+            if (c in setOf("bytevc1", "bvc1", "hevc", "h265", "bytevc2", "bvc2")) return false
+            return c in setOf("h264", "avc", "mp4v-es") || c.startsWith("avc1") || c.isEmpty()
+        }
+        val candidates = rows.filter { it.first <= maxQuality }
+        val selected = if (preferH264 && candidates.isNotEmpty()) {
+            candidates.firstOrNull { isH264(it.third.str("codec_type")) } ?: candidates.first()
+        } else {
+            candidates.firstOrNull() ?: rows.lastOrNull()
+        } ?: rows.lastOrNull() ?: throw IOException("没有电视可播放的清晰度，请稍后再试或选择其他剧集")
         val item=selected.third; var url=cleanUrl(item.str("main_url")); val seed=info.str("key_seed")
         if(seed.isNotEmpty()) url=MediaCrypto.decryptUrl(url,decode64(seed))
         if(!url.startsWith("https://") && !url.startsWith("http://")) throw IOException("播放地址无效")

@@ -223,7 +223,7 @@ internal fun MainActivity.playEpisode(index: Int,position: Long=0,autoplay: Bool
         // 播放用的是**平台注册过的**设备身份（本机随机值已经不再参与签名）：
         // 注册还没落地时先补一次，免得取地址落到内置那份被拉黑的档案上。
         if(!library.deviceRegistered()) registerDeviceOnce()
-        prefetched ?: RemoteVideo(repository.http,repository.stream(requestedId,maxQuality)).prepare()
+        prefetched ?: RemoteVideo(repository.http,repository.stream(requestedId,maxQuality,library.preferH264)).prepare()
     }, { remote ->
         video=remote; quality=remote.info.quality
         val p=player ?: run {

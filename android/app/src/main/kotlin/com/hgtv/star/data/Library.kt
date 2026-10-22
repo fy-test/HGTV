@@ -169,6 +169,9 @@ class Library(context: Context) {
     var maxQuality: Int
         get() = state().settings.quality
         set(value) { val next = PlaybackQuality.normalize(value); if (next != maxQuality) { state().settings = state().settings.copy(quality = next); put("quality", next) } }
+    var preferH264: Boolean
+        get() = sessionPrefs.getBoolean("prefer-h264", android.os.Build.VERSION.SDK_INT <= 22)
+        set(value) { sessionPrefs.edit().putBoolean("prefer-h264", value).apply() }
     /**
      * 搜索登录态（可选，App 抓到的 `x-tt-token`，整段 Cookie 也可以）。
      *

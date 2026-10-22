@@ -103,7 +103,7 @@ internal fun MainActivity.maybePrefetch() {
             // 与 [playEpisode] 同一道门槛：预取也是取播放地址，同样按注册设备来。
             if(!library.deviceRegistered()) { registerDeviceOnce(); source.inheritDevice(repository) }
             val prepared=scope.run {
-                RemoteVideo(http,source.stream(id,quality)).also { remote=it; it.warm() }
+                RemoteVideo(http,source.stream(id,quality,library.preferH264)).also { remote=it; it.warm() }
             }
             if(preparedNext.complete(ticket,key,prepared)) android.util.Log.i("HGTV","Next episode prepared near end")
         } catch(_: Exception) { remote?.close() }

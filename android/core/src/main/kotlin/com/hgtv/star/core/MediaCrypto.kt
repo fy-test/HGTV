@@ -2,7 +2,6 @@
 package com.hgtv.star.core
 
 import java.io.IOException
-import java.math.BigInteger
 
 object MediaCrypto {
     data class Sample(val start: Long, val end: Long, val iv: ByteArray, val encryptedOffset: Long = 0)
@@ -131,6 +130,22 @@ object MediaCrypto {
         if(sorted.zipWithNext().any { (a,b) -> a.end>b.start }) throw IOException("视频样本重叠")
         return Prepared(header,sorted)
     }
+    private val ctrCipher = object : ThreadLocal<javax.crypto.Cipher>() {
+        override fun initialValue(): javax.crypto.Cipher = javax.crypto.Cipher.getInstance("AES/CTR/NoPadding")
+    }
+
+    private fun computeCtrIv(baseIv: ByteArray, blockDelta: Long, outIv: ByteArray) {
+        System.arraycopy(baseIv, 0, outIv, 0, 16)
+        if (blockDelta == 0L) return
+        var carry = blockDelta
+        for (i in 15 downTo 0) {
+            val s = (outIv[i].toInt() and 0xFF) + (carry and 0xFF)
+            outIv[i] = s.toByte()
+            carry = (carry ushr 8) + (s ushr 8)
+            if (carry == 0L) break
+        }
+    }
+
     fun decrypt(data: ByteArray,start: Long,key: ByteArray?,prepared: Prepared): ByteArray {
         require(start>=0)
         val result=data.copyOf(); val end=start+data.size
@@ -139,14 +154,26 @@ object MediaCrypto {
         val samples=prepared.samples
         var low=0; var high=samples.size
         while(low<high) { val middle=(low+high) ushr 1; if(samples[middle].end<=start) low=middle+1 else high=middle }
+        val cipher = ctrCipher.get()
+        val keySpec = javax.crypto.spec.SecretKeySpec(key, "AES")
+        val ivBuffer = ByteArray(16)
         for(i in low until samples.size) {
             val sample=samples[i]; if(sample.start>=end) break
             val begin=maxOf(start,sample.start); val stop=minOf(end,sample.end); if(begin>=stop) continue
             val relative=begin-sample.start+sample.encryptedOffset; val skip=(relative%16).toInt()
-            val counter=(BigInteger(1,sample.iv)+BigInteger.valueOf(relative/16)).and(BigInteger.ONE.shiftLeft(128)-BigInteger.ONE).toByteArray()
-            val iv=ByteArray(16); counter.copyInto(iv,maxOf(0,16-counter.size),maxOf(0,counter.size-16),counter.size)
-            val decrypted=aes("CTR",key,iv,ByteArray(skip)+result.copyOfRange((begin-start).toInt(),(stop-start).toInt()))
-            decrypted.copyInto(result,(begin-start).toInt(),skip)
+            computeCtrIv(sample.iv, relative / 16, ivBuffer)
+            cipher.init(javax.crypto.Cipher.DECRYPT_MODE, keySpec, javax.crypto.spec.IvParameterSpec(ivBuffer))
+            val sliceOffset = (begin-start).toInt()
+            val sliceLen = (stop-begin).toInt()
+            if(skip == 0) {
+                val decrypted = cipher.doFinal(result, sliceOffset, sliceLen)
+                System.arraycopy(decrypted, 0, result, sliceOffset, sliceLen)
+            } else {
+                val input = ByteArray(skip + sliceLen)
+                System.arraycopy(result, sliceOffset, input, skip, sliceLen)
+                val decrypted = cipher.doFinal(input)
+                System.arraycopy(decrypted, skip, result, sliceOffset, sliceLen)
+            }
         }
         return result
     }
