@@ -1,7 +1,6 @@
 import java.util.Properties
 
 plugins { id("com.android.application"); kotlin("android") }
-apply(plugin = "com.efs.sdk.plugin")
 val signingProperties = Properties().apply { val config = rootProject.file("keystore.properties"); if (config.exists()) config.inputStream().use { load(it) } }
 fun signingValue(env: String, key: String): String? = System.getenv(env) ?: signingProperties.getProperty(key)
 
@@ -59,18 +58,6 @@ android {
     }
 }
 
-// efs 扩展由 APM 插件注册，字段没有 setter；Kotlin DSL 下按声明类反射写入。
-// 不写也能跑（默认全量插桩），显式限定白名单可避免给三方库插桩、控制包体积。
-run {
-    val ext = extensions.getByName("efs")
-    val extClass = Class.forName("com.efs.sdk.plugin.EfsExtension")
-    fun put(name: String, value: Any?) {
-        extClass.getDeclaredField(name).apply { isAccessible = true }.set(ext, value)
-    }
-    put("enable", true)
-    put("whiteList", listOf("com.hgtv.star"))
-    put("blackList", emptyList<String>())
-}
 dependencies {
     implementation("androidx.core:core:1.8.0")
     implementation("androidx.multidex:multidex:2.0.1")
