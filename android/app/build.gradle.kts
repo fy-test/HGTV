@@ -66,8 +66,8 @@ dependencies {
     implementation("com.google.zxing:core:3.4.1")
     implementation("com.squareup.okhttp3:okhttp:3.12.13")
     implementation(project(":core")) { exclude(group = "org.json") }
-    implementation("com.google.android.exoplayer:exoplayer-core:2.19.1")
-    implementation("com.google.android.exoplayer:exoplayer-ui:2.19.1")
+    implementation("androidx.media3:media3-exoplayer:1.2.1")
+    implementation("androidx.media3:media3-ui:1.2.1")
     implementation("com.umeng.umsdk:common:+")
     implementation("com.umeng.umsdk:asms:+")
     implementation("com.umeng.umsdk:apm:1.9.13")

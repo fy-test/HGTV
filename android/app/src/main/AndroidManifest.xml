@@ -1,4 +1,6 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-sdk tools:overrideLibrary="androidx.media3.exoplayer, androidx.media3.ui, androidx.media3.common, androidx.media3.datasource, androidx.media3.decoder, androidx.media3.extractor, androidx.media3.database"/>
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <!-- 应用内更新：下载新版 APK 后交给系统安装器覆盖安装（用户仍需在系统界面确认）。 -->
