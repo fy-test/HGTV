@@ -68,7 +68,4 @@ dependencies {
     implementation(project(":core")) { exclude(group = "org.json") }
     implementation("androidx.media3:media3-exoplayer:1.2.1")
     implementation("androidx.media3:media3-ui:1.2.1")
-    implementation("com.umeng.umsdk:common:+")
-    implementation("com.umeng.umsdk:asms:+")
-    implementation("com.umeng.umsdk:apm:1.9.13")
 }
