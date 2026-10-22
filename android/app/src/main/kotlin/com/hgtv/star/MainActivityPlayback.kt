@@ -109,7 +109,14 @@ internal fun MainActivity.maybePrefetch() {
         } catch(_: Exception) { remote?.close() }
     }
 }
-internal fun MainActivity.networkAvailable(): Boolean = connectivity.getNetworkCapabilities(connectivity.activeNetwork)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)==true
+internal fun MainActivity.networkAvailable(): Boolean {
+    return if (android.os.Build.VERSION.SDK_INT >= 23) {
+        connectivity.getNetworkCapabilities(connectivity.activeNetwork)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+    } else {
+        @Suppress("DEPRECATION")
+        connectivity.activeNetworkInfo?.isConnected == true
+    }
+}
 internal fun MainActivity.currentPosition(): Long = pendingSeek ?: player?.currentPosition?.takeIf { playbackReady } ?: startPosition
 internal fun MainActivity.cancelRecovery() { main.removeCallbacks(retryRunnable); retryPending=false; autoRecovery=false }
 internal fun MainActivity.scheduleRecovery() {

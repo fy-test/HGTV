@@ -2,6 +2,7 @@
 package com.hgtv.star.tv
 
 import android.app.Activity
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.ConnectivityManager
@@ -154,11 +155,21 @@ class TvTools(private val activity: Activity) {
      * 没有可用的 Wi-Fi 或有线网络时返回 null，由调用方给出各自的提示。
      */
     private fun lanAddress(): String? {
-        val connectivity=activity.getSystemService(ConnectivityManager::class.java)
-        val network=connectivity.activeNetwork
-        val capabilities=connectivity.getNetworkCapabilities(network) ?: return null
-        if(!(capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))) return null
-        return connectivity.getLinkProperties(network)?.linkAddresses?.map { it.address }?.firstOrNull { it is Inet4Address && it.isSiteLocalAddress }?.hostAddress
+        if(android.os.Build.VERSION.SDK_INT>=23) {
+            val connectivity=activity.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            val network=connectivity?.activeNetwork ?: return fallbackLanAddress()
+            val capabilities=connectivity.getNetworkCapabilities(network) ?: return fallbackLanAddress()
+            if(!(capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))) return null
+            return connectivity.getLinkProperties(network)?.linkAddresses?.map { it.address }?.firstOrNull { it is Inet4Address && it.isSiteLocalAddress }?.hostAddress
+        } else {
+            return fallbackLanAddress()
+        }
+    }
+    private fun fallbackLanAddress(): String? {
+        return runCatching {
+            java.net.NetworkInterface.getNetworkInterfaces()?.asSequence()?.flatMap { it.inetAddresses.asSequence() }
+                ?.firstOrNull { it is Inet4Address && !it.isLoopbackAddress && it.isSiteLocalAddress }?.hostAddress
+        }.getOrNull()
     }
     /** 二维码 + 说明文字的通用正文：两处扫码弹窗共用同一份排版与间距。 */
     private fun scanBody(instructions: String,url: String,into: LinearLayout) {

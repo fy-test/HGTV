@@ -43,7 +43,15 @@ android {
                 .getOrNull()?.takeIf { it.storeFile?.exists() == true && it.storePassword != null && it.keyAlias != null }
                 ?: signingConfigs.getByName("debug")
         }
-        getByName("release") { multiDexKeepProguard = file("multidex-keep.pro"); signingConfig = signingConfigs.getByName("delivery"); isMinifyEnabled = true; proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro") } }
+        getByName("release") {
+            multiDexKeepProguard = file("multidex-keep.pro")
+            signingConfig = runCatching { signingConfigs.getByName("delivery") }
+                .getOrNull()?.takeIf { it.storeFile?.exists() == true && it.storePassword != null && it.keyAlias != null }
+                ?: signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_1_8; targetCompatibility = JavaVersion.VERSION_1_8 }
     kotlinOptions { jvmTarget = "1.8" }
     lint {

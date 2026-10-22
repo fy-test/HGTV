@@ -136,21 +136,23 @@ internal fun Context.tvRow() = LinearLayout(this).apply {
     focusOverflow()
 }
 
-/** 圆角用 outline 裁剪，而不是叠加遮罩位图：不额外分配内存，缩放后依然锐利。 */
+/** 圆角用 outline 裁剪，而不是叠加遮罩位图：不额外分配内存，缩放后依然锐利。API 21 以下安全跳过。 */
 internal fun roundCorners(view: View, radiusDp: Int = TvStyle.RADIUS_POSTER) {
-    view.clipToOutline = true
-    view.outlineProvider = object : ViewOutlineProvider() {
-        override fun getOutline(target: View, outline: Outline) {
-            outline.setRoundRect(
-                0,
-                0,
-                target.width,
-                target.height,
-                radiusDp * target.resources.displayMetrics.density
-            )
+    if (android.os.Build.VERSION.SDK_INT >= 21) {
+        view.clipToOutline = true
+        view.outlineProvider = object : ViewOutlineProvider() {
+            override fun getOutline(target: View, outline: Outline) {
+                outline.setRoundRect(
+                    0,
+                    0,
+                    target.width,
+                    target.height,
+                    radiusDp * target.resources.displayMetrics.density
+                )
+            }
         }
+        view.addOnLayoutChangeListener { target, _, _, _, _, _, _, _, _ -> target.invalidateOutline() }
     }
-    view.addOnLayoutChangeListener { target, _, _, _, _, _, _, _, _ -> target.invalidateOutline() }
 }
 
 /** 粗体正文，卡片标题与按钮共用同一种字重节奏。 */

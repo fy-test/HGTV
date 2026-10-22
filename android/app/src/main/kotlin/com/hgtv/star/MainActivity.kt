@@ -433,12 +433,16 @@ class MainActivity: Activity() {
     internal var foreground=false
     internal lateinit var connectivity: ConnectivityManager
     private var networkRegistered=false
-    private val networkCallback=object: ConnectivityManager.NetworkCallback() {
-        private fun changed() { main.post { if(connectivity.isActiveNetworkMetered || !networkAvailable()) cancelPrefetch(); if(foreground && screen=="player" && playError && autoRecovery) scheduleRecovery() } }
-        override fun onAvailable(network: Network) { changed() }
-        override fun onLost(network: Network) { changed() }
-        override fun onCapabilitiesChanged(network: Network,capabilities: NetworkCapabilities) { changed() }
-        override fun onBlockedStatusChanged(network: Network,blocked: Boolean) { changed() }
+    private val networkCallback: Any? by lazy {
+        if(android.os.Build.VERSION.SDK_INT>=21) {
+            object: ConnectivityManager.NetworkCallback() {
+                private fun changed() { main.post { if(connectivity.isActiveNetworkMetered || !networkAvailable()) cancelPrefetch(); if(foreground && screen=="player" && playError && autoRecovery) scheduleRecovery() } }
+                override fun onAvailable(network: Network) { changed() }
+                override fun onLost(network: Network) { changed() }
+                override fun onCapabilitiesChanged(network: Network,capabilities: NetworkCapabilities) { changed() }
+                override fun onBlockedStatusChanged(network: Network,blocked: Boolean) { changed() }
+            }
+        } else null
     }
     internal val retryRunnable=Runnable {
         retryPending=false
@@ -685,6 +689,11 @@ class MainActivity: Activity() {
     internal val retireForced=Runnable { retirePreviousEpisode() }
 
     // ---- 生命周期与系统回调：扩展成员不能 override，只能留在 Activity 本体里 ----
+    override fun attachBaseContext(base: Context?) {
+        super.attachBaseContext(base)
+        androidx.multidex.MultiDex.install(this)
+    }
+
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
         window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
@@ -693,7 +702,8 @@ class MainActivity: Activity() {
         TvStyle.applyTheme(TvThemeStore.load(this))
         applyWindowBackground()
         // 低内存设备保留全部视觉层级，只关掉过渡动画、收紧柔光（投影更短更淡，生成也更快）。
-        TvStyle.animate=getSystemService(android.app.ActivityManager::class.java)?.isLowRamDevice!=true
+        val am=getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+        TvStyle.animate=am?.isLowRamDevice!=true
         Soft.quality=if(TvStyle.animate) 1f else .7f
         library=Library(this); artwork=ArtworkLoader(this); tvTools=TvTools(this)
         root=FrameLayout(this).apply { setBackgroundColor(bg); clipChildren=false; clipToPadding=false }
@@ -706,8 +716,12 @@ class MainActivity: Activity() {
             // 静默期 / `restoring` 里不被上报。等一帧再按真实位置把页头状态摆正（见 [syncHeaderState]）。
             root.post { syncHeaderState() }
         }
-        connectivity=getSystemService(ConnectivityManager::class.java)
-        runCatching { connectivity.registerDefaultNetworkCallback(networkCallback); networkRegistered=true }
+        connectivity=getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        if(android.os.Build.VERSION.SDK_INT>=24) {
+            (networkCallback as? ConnectivityManager.NetworkCallback)?.let { cb ->
+                runCatching { connectivity.registerDefaultNetworkCallback(cb); networkRegistered=true }
+            }
+        }
         favoriteMonitor=FavoriteMonitor(library,repository) { refreshFavoriteLabels() }
         appUpdater=AppUpdater(this) {
             // 「空闲」= 在前台、不在播放界面、没有模态框。播放中与弹窗里绝不打扰。
@@ -866,7 +880,11 @@ class MainActivity: Activity() {
     }
     override fun onDestroy() {
         generation++; cancelWork()
-        if(networkRegistered) connectivity.unregisterNetworkCallback(networkCallback)
+        if(networkRegistered && android.os.Build.VERSION.SDK_INT>=21) {
+            (networkCallback as? ConnectivityManager.NetworkCallback)?.let { cb ->
+                runCatching { connectivity.unregisterNetworkCallback(cb) }
+            }
+        }
         favoriteMonitor.destroy(); tvTools.destroy(); appUpdater.destroy(); saveProgress(); releasePlayer(); library.close()
         artwork.close(); releaseCatalogViews(); mediaSession.release(); main.removeCallbacksAndMessages(null)
         io.shutdownNow(); prefetchWorker.shutdownNow(); danmakuWorker.shutdownNow(); networkCleanup.shutdown()

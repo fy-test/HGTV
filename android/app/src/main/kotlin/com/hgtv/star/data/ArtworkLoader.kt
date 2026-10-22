@@ -52,7 +52,7 @@ class ArtworkLoader(context: Context) {
     }
 
     private val main = Handler(Looper.getMainLooper())
-    private val lowRam = context.applicationContext.getSystemService(ActivityManager::class.java)?.isLowRamDevice == true
+    private val lowRam = (context.applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager)?.isLowRamDevice == true
     /**
      * 内存缓存容量。
      *

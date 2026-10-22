@@ -35,7 +35,7 @@ internal class DanmakuEmojiStore private constructor(context: Context) {
     fun interface Listener { fun onEmojiDecoded() }
 
     private val assets = context.applicationContext.assets
-    private val lowRam = context.applicationContext.getSystemService(ActivityManager::class.java)?.isLowRamDevice == true
+    private val lowRam = (context.applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager)?.isLowRamDevice == true
     private val main = Handler(Looper.getMainLooper())
     private val cache = object : LruCache<String, Bitmap>(if (lowRam) LOW_RAM_BYTES else NORMAL_BYTES) {
         override fun sizeOf(key: String, value: Bitmap) = value.allocationByteCount

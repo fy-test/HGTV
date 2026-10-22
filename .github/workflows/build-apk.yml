@@ -26,13 +26,14 @@ jobs:
       - name: Install Android SDK platform and build-tools
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
 
-      - name: Run Core Tests and Assemble Debug APK
+      - name: Run Core Tests and Assemble Release APK
         run: |
           chmod +x android/gradlew
-          ./android/gradlew -p android :core:test :app:assembleDebug --console=plain
+          ./android/gradlew -p android :core:test :app:assembleRelease --console=plain
+          cp android/app/build/outputs/apk/release/app-release.apk HGTV-android4-optimized.apk
 
-      - name: Upload Debug APK
+      - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
           name: HGTV-android4-optimized
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: HGTV-android4-optimized.apk

@@ -43,10 +43,12 @@ internal fun MainActivity.profileHead(row: LinearLayout) {
     val avatar=ImageView(this).apply {
         scaleType=ImageView.ScaleType.CENTER_CROP
         contentDescription="账号头像"
-        clipToOutline=true
-        outlineProvider=object: ViewOutlineProvider() {
-            override fun getOutline(view: View,outline: android.graphics.Outline) {
-                outline.setOval(0,0,view.width,view.height)
+        if(android.os.Build.VERSION.SDK_INT>=21) {
+            clipToOutline=true
+            outlineProvider=object: ViewOutlineProvider() {
+                override fun getOutline(view: View,outline: android.graphics.Outline) {
+                    outline.setOval(0,0,view.width,view.height)
+                }
             }
         }
         // 还没读到资料时先给一块凹槽色：比空白好认，也不会让这一行忽高忽低。
